@@ -3,6 +3,13 @@
 
 kAPI is a powerful VME useful for debugging and anti-cheat development, built around the Unified Naming Convention standard (UNC).
 
+from a local script do:
+```lua
+require(kPAI_path)()
+```
+and the environment is automatically injected.
+the module is more powerful when `loadstring` is used.
+
 Click [here](https://roblox-video-converter.vercel.app/) to convert a video to kAPI's format
 
 ## Features
