@@ -1,23 +1,20 @@
 # kAPI
-> A Virtual Machine forked from the powerful xAPI repository.
+> A Virtual Machine Environment forked from the powerful xAPI repository.
+click [here](https://roblox-video-converter.vercel.app/) to convert a video to kAPI's format
 
-kAPI is a vanilla Luau executor API built entirely inside Roblox — no injection, no DLL, no external tools required.
+kAPI is a powerful VME useful for debugging and anti-cheat development, built around the Unified Naming Convention standard (UNC).
 
 ## Features
 - 90%+ UNC score out of the box
-- Pure Luau — runs inside any Roblox game
-- Full Instance proxy system with shared coreMeta
+- Full Metatable manipulation
+- Function manipulation
 - Persistent filesystem per player
-- Audio playback (MP3, WAV, OGG) via WavPlayer
-- Video playback
-- Drawing library (Line, Circle, Square, Triangle, Image, etc.)
-- Custom asset loading (PNG, JPG, GIF, MP3, MP3, TXT)
+- Custom asset loading (PNG, JPG, MP4, MP3, TXT...)
 - Actor/thread isolation
-- Lua 5.1 runner (`--!Lua`)
-- HTML runner (`--!html`)
+- Basic Lua 5.1 runner (`--!Lua`)
+- Basic HTML runner (`--!html`)
 - WebSocket support
-- hookmetamethod, hookfunction, full debug.* library
-- scriptspace for getscripthash / getscriptclosure
+- custom nil instances space (`getnilspace()`)
 - FFlag system for granular feature control
 
 ## UNC Score
@@ -32,7 +29,7 @@ kAPI is a vanilla Luau executor API built entirely inside Roblox — no injectio
 - **xAPI** by [@anon2375517](https://devforum.roblox.com/t/xapi-a-powerful-pentesting-and-debugging-tool/2688148) — original foundation
 - **Fiu** by Rerumu — Luau bytecode interpreter
 - **LuaCeption** — Luau source compiler
-- HashLib, LZ4, Signal, TypeChecking, and more
+- HashLib, LZ4, Signal, and more
 
 ## License
 MIT
