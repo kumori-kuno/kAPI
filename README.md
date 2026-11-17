@@ -1,43 +1,294 @@
 # kAPI
-> A Virtual Machine Environment forked from the powerful xAPI repository.
 
-kAPI is a powerful VME useful for debugging and anti-cheat development, built around the Unified Naming Convention standard (UNC).
+> A Roblox executor **emulator** written entirely in Luau. It runs inside your own Roblox Studio session and reproduces the behavior of real executor APIs (UNC / sUNC) so scripts, tools, and anti-cheats can be built and tested without a real executor.
 
-from a local script do:
-```lua
-require(kPAI_path)()
-```
-and the environment is automatically injected.
-the module is more powerful when `loadstring` is used.
+kAPI is a fork of [xAPI](https://devforum.roblox.com/t/xapi-a-powerful-pentesting-and-debugging-tool/2688148), heavily expanded by [@kumori-kuno](https://github.com/kumori-kuno).
 
-Click [here](https://roblox-video-converter.vercel.app/) to convert a video to kAPI's format
+---
+
+## What kAPI is (and isn't)
+
+**kAPI is:**
+- A virtual machine environment written in plain Luau, loaded like any other ModuleScript.
+- An emulation layer that recreates executor globals (`getgenv`, `hookfunction`, `hookmetamethod`, `getgc`, `readfile`, `Drawing`, `gethui`, …) with the same names, signatures, and behavior described by the UNC/sUNC standards.
+- A tool for **debugging, script testing, and anti-cheat development** — you can see exactly how executor scripts behave and build detections against them, all inside your own place.
+
+**kAPI is not:**
+- A real executor. It doesn't inject anything, doesn't attach to the Roblox client, and doesn't run in live games you don't own.
+- Able to bypass or interact with Roblox's real anti-cheat. It only uses normal Roblox engine features, so it can only affect the experience it's installed in (typically your own Studio session).
+
+---
+
+## How it works
+
+kAPI's core idea is to **own the VM that user code runs in**:
+
+1. **Interpreted execution.** `loadstring` compiles source with **LuauCeption** (a Luau compiler written in Luau) and runs the bytecode on **Fiu** (a Luau bytecode interpreter written in Luau). Because kAPI controls the interpreter, it can see every closure, upvalue, constant, proto, stack frame, and call — which is what makes globals like `getgc`, `getupvalues`, `getconstants`, `getprotos`, `getstack`, and `hookfunction` real instead of faked.
+2. **Instance proxies.** Scripts receive proxied versions of `game` and its Instances. That enables `hookmetamethod` (`__index`, `__newindex`, `__namecall`), `getnamecallmethod`, `getrawmetatable`, `cloneref`, `getconnections`, `firesignal`, and hidden/spoofed properties.
+3. **Environment injection.** Executor globals are injected into the script's environment and exposed through `getgenv()`, kept separate from the game's own `getrenv()`.
+4. **Identity emulation.** `getidentity` / `setidentity` emulate thread identity levels, with bridges for elevated contexts in Studio.
+5. **Actors / parallel Luau.** `run_on_actor`, `getactors`, `getluastate`, and comm channels emulate executor actor APIs using real Actors.
+6. **Server-backed features.** A server-side component handles things a client script can't do alone: HTTP requests, a persistent per-player filesystem, `game:GetObjects`, WebSockets, audio, images, and video.
+
+---
 
 ## Features
-- 90%+ UNC score out of the box
-- Full Metatable manipulation
-- Function manipulation
-- Persistent filesystem per player
-- Custom asset loading (PNG, JPG, MP4, MP3, TXT...)
-- Actor/thread isolation
-- Basic Lua 5.1 runner (`--!Lua`)
-- Basic HTML runner (`--!html`)
-- WebSocket support
-- custom nil instances space (`getnilspace()`)
-- FFlag system for granular feature control
 
-## UNC Score
-| Configuration | Score |
+- **High UNC compatibility** — 90%+ on the UNC test with all FFlags on.
+- **Closures & functions** — `hookfunction`, `newcclosure`, `iscclosure`, `islclosure`, `clonefunction`, `checkcaller`, `getcallingscript`.
+- **Debug library** — `getupvalue(s)`, `setupvalue`, `getconstant(s)`, `setconstant`, `getproto(s)`, `getstack`, `setstack`, `getinfo`.
+- **Metatables** — `getrawmetatable`, `setrawmetatable`, `hookmetamethod`, `setreadonly`, `isreadonly`, `getnamecallmethod`.
+- **Environment** — `getgenv`, `getrenv`, `getgc`, `getreg`, `getsenv`, `getloadedmodules`, `getrunningscripts`.
+- **Instances & signals** — `getconnections`, `firesignal`, `fireclickdetector`, `fireproximityprompt`, `firetouchinterest`, `gethiddenproperty`, `sethiddenproperty`, `cloneref`, `compareinstances`, `getnilinstances`, `getnilspace`.
+- **Filesystem** — `readfile`, `writefile`, `appendfile`, `listfiles`, `isfile`, `isfolder`, `makefolder`, `delfile`, `delfolder`, `loadfile`. Persistent per player.
+- **Network** — `request` / `http_request`, `game:HttpGet`, `WebSocket.connect`.
+- **Assets** — `getcustomasset` for images, audio, video, fonts, and text (PNG, JPG, MP4, MP3, TXT …), and `game:GetObjects`.
+- **UI** — `gethui`, the `Drawing` library, console functions.
+- **Crypt** — `crypt.base64encode/decode`, `crypt.encrypt/decrypt`, `crypt.hash`, `crypt.generatekey`, `crypt.generatebytes`, plus LZ4 compression.
+- **Actors** — `run_on_actor`, `getactors`, `getluastate`, comm channels.
+- **Extras** — Lua 5.1 runner (`--!Lua`), HTML runner (`--!html`), an in-game IDE with autocomplete, and an FFlag system to switch subsystems on or off.
+
+---
+
+## Installation
+
+1. Download `kAPI.rbxm` from this repository.
+2. Insert it into your place in Roblox Studio and keep its structure intact (kAPI has both client and server parts).
+3. From a **LocalScript**, run:
+
+```lua
+require(path_to_kAPI)()
+```
+
+The environment is injected into the calling script automatically. kAPI is most capable when code runs through its `loadstring`, since that code executes on kAPI's own interpreter:
+
+```lua
+loadstring([[
+    print(identifyexecutor())
+    print(getgenv())
+]])()
+```
+
+Video files for kAPI's video player can be converted with the [kAPI video converter](https://roblox-video-converter.vercel.app/).
+
+---
+
+## FFlags
+
+kAPI's subsystems can be switched on or off through its FFlags module (filesystem, custom globals, fake compatibility shims, Fiu manipulation, drawing, websockets, and more). Turning flags off makes kAPI lighter but lowers compatibility:
+
+| Configuration | UNC score |
 |---|---|
-| Full (all fflags on) | 90%+ |
+| Full (all FFlags on) | 90%+ |
 | No fake compatibility | ~87% |
 | No Fiu manipulation | ~84% |
 | Minimal (both off) | ~72% |
 
+Flags can also be read and set at runtime with `getfflag` / `setfflag`.
+
+---
+
+## Known limitations
+
+- **Emulation, not engine access.** Scripts that use the real `game` (not kAPI's proxy) see the world normally, so a few behaviors that depend on engine internals (for example `getscriptbytecode` on the game's own scripts) are approximated or unavailable.
+- **Compiler version.** LuauCeption targets an older Luau release, so very new syntax or heavily obfuscated scripts may fail to compile.
+- **Performance.** Code run through `loadstring` executes on an interpreter written in Luau, so it is slower than native Luau.
+- **Unions.** `game:GetObjects` can't recover real geometry for `PartOperation` (unions).
+
+---
+
+## Docs
+
+kAPI follows the [UNC](https://github.com/unified-naming-convention/NamingStandard) / sUNC naming standards, with [Madium's docs](https://getmadium.net/docs) as the behavior reference. If a global below exists in those standards, it's meant to behave exactly as documented there. Most globals also answer to their common aliases (`get_hidden_gui`, `http_request`, `syn.request`, …).
+
+### Directives (first line of a `loadstring` chunk)
+
+| Directive | Effect |
+|---|---|
+| `--!Lua` | Runs the chunk as Lua 5.1 instead of Luau |
+| `--!html` | Renders the chunk as an HTML window GUI |
+| `--!NoEnv` | Runs the chunk without kAPI's environment (plain sandbox) |
+
+### Environment
+
+| Global | Description |
+|---|---|
+| `getgenv()` | The executor's global table, shared by every kAPI script. Same table every call. |
+| `getrenv()` | The game's environment, kept separate from executor globals. |
+| `getsenv(script)` | A script's environment table (same table per script). |
+| `getreg()` / `debug.getregistry()` | kAPI's registry table. |
+| `getgc(includeTables?)` | Every function (and optionally table) kAPI's VM has created. |
+| `filtergc(type, options, returnOne?)` | Search `getgc` by type and fields. |
+| `getloadedmodules()` / `getrunningscripts()` | ModuleScripts that were required / scripts currently running. |
+| `identifyexecutor()` | Returns kAPI's name and version. |
+| `getidentity()` / `setidentity(n)` | Read or emulate the thread identity level. |
+| `getfflag(name)` / `setfflag(name, value)` | Read or set kAPI's emulated engine FFlags. |
+
+### Closures
+
+| Global | Description |
+|---|---|
+| `hookfunction(target, hook)` | Replaces `target` everywhere it's referenced; returns a callable original. |
+| `restorefunction(target)` / `isfunctionhooked(f)` | Undo or check a hook. |
+| `newcclosure(f)` | Wraps `f` as a real C closure. |
+| `iscclosure(f)` / `islclosure(f)` | Check whether a function is a C or Luau closure. |
+| `isexecutorclosure(f)` | `true` if kAPI (not the game) created the function. |
+| `clonefunction(f)` | A copy of `f` that shares its prototype. |
+| `checkcaller()` | `true` when the current thread belongs to kAPI. |
+| `getcallingscript()` | The script that called the current function. |
+| `oth.hook` / `oth.unhook` | Hooks that run on a separate thread. |
+
+### Debug
+
+| Global | Description |
+|---|---|
+| `debug.getupvalue(s)` / `debug.setupvalue` | Read or write a function's upvalues. |
+| `debug.getconstant(s)` / `debug.setconstant` | Read or write a function's constants. |
+| `debug.getproto(s)` | A function's inner functions. |
+| `debug.getstack` / `debug.setstack` | Read or write a stack frame's registers. |
+| `debug.getinfo(f)` | Function info (name, source, line, params). |
+| `getlocal` / `getlocals` / `setlocal` | Read or write local variables by stack level. |
+| `decompile(f)` | Source for a function compiled by kAPI. |
+
+### Metatables
+
+| Global | Description |
+|---|---|
+| `getrawmetatable(obj)` / `setrawmetatable(obj, mt)` | Bypass `__metatable` locks. |
+| `hookmetamethod(obj, name, hook)` | Hook `__index`, `__newindex`, `__namecall` and others on instances. |
+| `getnamecallmethod()` / `setnamecallmethod(name)` | The method name inside a `__namecall` hook. |
+| `setreadonly(t, bool)` / `isreadonly(t)` | Lock or unlock a table. |
+
+### Instances & signals
+
+| Global | Description |
+|---|---|
+| `cloneref(instance)` | A second, distinct reference to the same instance. |
+| `compareinstances(a, b)` | `true` if two references point to the same instance. |
+| `gethiddenproperty` / `sethiddenproperty` | Read or write non-scriptable properties. |
+| `setscriptable(obj, prop, bool)` | Make a hidden property scriptable. |
+| `getnilinstances()` / `getnilspace()` | Instances parented to `nil` / kAPI's nil-instance space. |
+| `getconnections(signal)` | Connection objects (`Fire`, `Disable`, `Enable`, `Function`, …). |
+| `firesignal(signal, ...)` | Fire a signal's connections with your arguments. |
+| `replicatesignal(signal, ...)` | Fire a signal as if it came from the server/engine. |
+| `fireclickdetector` / `fireproximityprompt` / `firetouchinterest` | Trigger interactions directly. |
+| `gethui()` | A hidden UI container for your ScreenGuis, invisible to the game's own scripts. |
+
+### Filesystem (persistent, per player)
+
+| Global | Description |
+|---|---|
+| `readfile` / `writefile` / `appendfile` | Read, overwrite, or append to a file. |
+| `listfiles(path)` | Files and folders inside `path` (`""` is the workspace root). |
+| `isfile` / `isfolder` | Existence checks. |
+| `makefolder` / `delfile` / `delfolder` | Create or delete. |
+| `loadfile(path)` | Compile a file into a function. |
+| `getcustomasset(path)` | An asset id for an image, audio, video, font, or text file. |
+
+### Network
+
+| Global | Description |
+|---|---|
+| `request(options)` | HTTP request (`Url`, `Method`, `Headers`, `Body`). |
+| `game:HttpGet(url)` | GET a URL and return the body. |
+| `WebSocket.connect(url)` | A WebSocket with `Send`, `Close`, `OnMessage`, `OnClose`. |
+| `game:GetObjects(assetId)` | Load a model as a table of real, built Instances. |
+
+### Input
+
+| Global | Description |
+|---|---|
+| `mouse1click` / `mouse1press` / `mouse1release` (and `mouse2…`) | Simulate mouse buttons. |
+| `mousemoverel` / `mousemoveabs` / `mousescroll` | Simulate mouse movement. |
+| `keypress` / `keyrelease` | Simulate keys. |
+
+### Crypt
+
+| Global | Description |
+|---|---|
+| `crypt.base64encode` / `crypt.base64decode` | Base64. |
+| `crypt.encrypt` / `crypt.decrypt` | AES with a key and IV (several modes). |
+| `crypt.hash(data, algorithm)` | MD5, SHA-1, SHA-2, SHA-3 and more. |
+| `crypt.generatekey()` / `crypt.generatebytes(n)` | Random keys and bytes. |
+| `lz4compress` / `lz4decompress` | LZ4 compression. |
+
+### Drawing & console
+
+| Global | Description |
+|---|---|
+| `Drawing.new(type)` | `Line`, `Text`, `Image`, `Circle`, `Square`, `Quad`, `Triangle`. |
+| `cleardrawcache()` / `isrenderobj(obj)` | Manage drawings. |
+| `rconsoleprint` / `rconsoleclear` / `rconsolecreate` | kAPI's console window. |
+
+### Actors
+
+| Global | Description |
+|---|---|
+| `run_on_actor(actor, code)` | Run code inside an Actor's own Lua state. |
+| `return_on_actor(actor, code)` | Same, but waits and returns the result. |
+| `getactors()` | Real Actors in the game. |
+| `getluastate(actor)` | A proxy for an Actor's Lua state (`:Execute`). |
+| `create_comm_channel()` / `get_comm_channel(id)` | Pass data between Actor VMs. |
+
+### kAPI extras
+
+| Global | Description |
+|---|---|
+| `iy` | Infinite Yield, preloaded (needs the HTTP flag). |
+| `queue_on_teleport(code)` | Code to run after a teleport. |
+| `setfpscap(n)` / `getfpscap()` | Emulated FPS cap. |
+| `setclipboard` / `getclipboard` | kAPI's clipboard. |
+
+---
+
+## History
+
+### Origins
+kAPI started with one question: *what do `getfenv` and `setfenv` actually do?* Experimenting with them showed that a script's environment is basically its globals, and that a required module can reach its caller's environment with `setfenv(2)`. That trick is still how kAPI injects itself today. From there it became a small home-made environment with stubs like `getgenv` and `rconsoleprint`, then a GUI with one button per executor global to see what each one did.
+
+The point was never "exploiting". It was understanding how each global works under the hood, and then rebuilding it 1:1.
+
+### xAPI (2023 – 2024)
+[xAPI](https://devforum.roblox.com/t/xapi-a-powerful-pentesting-and-debugging-tool/2688148) by @SQLanguage was the first serious Luau-only executor sandbox, and it's kAPI's foundation.
+
+| When | Release |
+|---|---|
+| Sep 2023 | xAPI 2, "A Powerful Executor Simulator" |
+| Late 2023 | v3 line. Luau-compatible `loadstring` in v3.6, `saveinstance` in v3.7 |
+| v3.5 – 3.7.2 | Instance wrapping broken, server-side support lost |
+| May 2024 | v4.0 removes wrapping entirely; LuauCeption compiler + Fiu VM |
+| Jun 2024 | v4.1: `oth.hook`, `getconstants`, `getprotos` |
+| Aug 2024 | v4.2: FFlags, Synapse X aliases, filesystem, `run_on_actor` (UNC 49%) |
+| Sep 2024 | v4.3: instance wrapping returns |
+| — | v4.4: decentralized `GetObjects`; the last release |
+
+After 4.4, Roblox changes broke xAPI and development stopped. Most of its life was a fight over instance wrapping, which is why many of its FFlags shipped turned off.
+
+### kAPI (2026 – )
+kAPI forked from late xAPI 4 and made wrapping the foundation instead of the risky part. Where xAPI was safest with flags off, **kAPI is built to run with every flag on**.
+
+| When | Milestone |
+|---|---|
+| Aug 2026 | Public on GitHub: v1.0.0-beta, v1.1-beta, v1.2-beta |
+| Sep – Oct 2026 | Virtual input, aliases, shared proxy metatable, actor isolation. **100% UNC** reached; target moves to sUNC |
+| Nov 2026 | **2.0** modular rewrite (`Bin/kAPI.dll` with `RBX` / `Executor` / `Runtime`, `kAPI.sys`, `Config/FFlags`). Madium compatibility, RakNet emulation, rebuilt `GetObjects`, full actors |
+
+### What's next
+- **2.0.1:** interpreter fixes and asset loading fixes.
+- **gethui rework:** memory-backed ScreenGuis and a separate renderer.
+- **GetObjects scripts:** loaded scripts run through kAPI's interpreter, `require` included.
+- **Real file storage:** for `getcustomasset`.
+- **v3:** moving the interpreter to Luau², a newer engine.
+
+---
+
 ## Credits
+
 - **xAPI** by [@anon2375517](https://devforum.roblox.com/t/xapi-a-powerful-pentesting-and-debugging-tool/2688148) — original foundation
 - **Fiu** by Rerumu — Luau bytecode interpreter
-- **LuaCeption** — Luau source compiler
-- HashLib, LZ4, Signal, and more
+- **LuauCeption** — Luau compiler in Luau
+- HashLib, LZ4, Signal, and other bundled libraries
 
 ## License
+
 MIT
