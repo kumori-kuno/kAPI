@@ -241,47 +241,6 @@ kAPI follows the [UNC](https://github.com/unified-naming-convention/NamingStanda
 
 ---
 
-## History
-
-### Origins
-kAPI started with one question: *what do `getfenv` and `setfenv` actually do?* Experimenting with them showed that a script's environment is basically its globals, and that a required module can reach its caller's environment with `setfenv(2)`. That trick is still how kAPI injects itself today. From there it became a small home-made environment with stubs like `getgenv` and `rconsoleprint`, then a GUI with one button per executor global to see what each one did.
-
-The point was never "exploiting". It was understanding how each global works under the hood, and then rebuilding it 1:1.
-
-### xAPI (2023 – 2024)
-[xAPI](https://devforum.roblox.com/t/xapi-a-powerful-pentesting-and-debugging-tool/2688148) by @SQLanguage was the first serious Luau-only executor sandbox, and it's kAPI's foundation.
-
-| When | Release |
-|---|---|
-| Sep 2023 | xAPI 2, "A Powerful Executor Simulator" |
-| Late 2023 | v3 line. Luau-compatible `loadstring` in v3.6, `saveinstance` in v3.7 |
-| v3.5 – 3.7.2 | Instance wrapping broken, server-side support lost |
-| May 2024 | v4.0 removes wrapping entirely; LuauCeption compiler + Fiu VM |
-| Jun 2024 | v4.1: `oth.hook`, `getconstants`, `getprotos` |
-| Aug 2024 | v4.2: FFlags, Synapse X aliases, filesystem, `run_on_actor` (UNC 49%) |
-| Sep 2024 | v4.3: instance wrapping returns |
-| — | v4.4: decentralized `GetObjects`; the last release |
-
-After 4.4, Roblox changes broke xAPI and development stopped. Most of its life was a fight over instance wrapping, which is why many of its FFlags shipped turned off.
-
-### kAPI (2026 – )
-kAPI forked from late xAPI 4 and made wrapping the foundation instead of the risky part. Where xAPI was safest with flags off, **kAPI is built to run with every flag on**.
-
-| When | Milestone |
-|---|---|
-| Aug 2026 | Public on GitHub: v1.0.0-beta, v1.1-beta, v1.2-beta |
-| Sep – Oct 2026 | Virtual input, aliases, shared proxy metatable, actor isolation. **100% UNC** reached; target moves to sUNC |
-| Nov 2026 | **2.0** modular rewrite (`Bin/kAPI.dll` with `RBX` / `Executor` / `Runtime`, `kAPI.sys`, `Config/FFlags`). Madium compatibility, RakNet emulation, rebuilt `GetObjects`, full actors |
-
-### What's next
-- **2.0.1:** interpreter fixes and asset loading fixes.
-- **gethui rework:** memory-backed ScreenGuis and a separate renderer.
-- **GetObjects scripts:** loaded scripts run through kAPI's interpreter, `require` included.
-- **Real file storage:** for `getcustomasset`.
-- **v3:** moving the interpreter to Luau², a newer engine.
-
----
-
 ## Credits
 
 - **xAPI** by [@anon2375517](https://devforum.roblox.com/t/xapi-a-powerful-pentesting-and-debugging-tool/2688148) — original foundation
