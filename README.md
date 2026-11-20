@@ -57,7 +57,15 @@ kAPI's core idea is to **own the VM that user code runs in**:
 3. From a **LocalScript**, run:
 
 ```lua
-require(path_to_kAPI)()
+-- kAPI Require: paste this anywhere (plugin Script, command bar, RbxStu) — kAPI figures out the rest for identity elevation.
+
+local RunService = game:GetService("RunService")
+if RunService:IsRunning() and RunService:IsClient() then
+	local function find() return game:GetService("ReplicatedStorage"):FindFirstChild("_ENV") or game:FindFirstChild("_ENV", true) end
+	local env = find()
+	while not env do task.wait() env = find() end
+	require(env)()
+end
 ```
 
 The environment is injected into the calling script automatically. kAPI is most capable when code runs through its `loadstring`, since that code executes on kAPI's own interpreter:
